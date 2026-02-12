@@ -24,13 +24,14 @@ class handler(BaseHTTPRequestHandler):
                 "version": "1.120.1",
                 "build": "OB52",
                 "status": "online",
+                "message": "API is working!",
                 "endpoints": {
-                    "/": "Home page",
+                    "/": "Home page - You are here",
                     "/api/openid?uid={UID}": "Get Open ID from UID",
                     "/api/openid?uid={UID}&full=true": "Get full account data"
                 },
                 "example": "/api/openid?uid=14152363418",
-                "documentation": "https://github.com/bodyluqman-crypto/DRAGON-API-OPEN_ID"
+                "github": "https://github.com/bodyluqman-crypto/DRAGON-API-OPEN_ID"
             }
             self.wfile.write(json.dumps(response, indent=2).encode())
             return
@@ -65,7 +66,7 @@ class handler(BaseHTTPRequestHandler):
                 }
                 
                 data = {
-                    "uid": uid,
+                    "uid": str(uid),
                     "password": "",
                     "response_type": "token",
                     "client_type": "2",
@@ -80,7 +81,6 @@ class handler(BaseHTTPRequestHandler):
                 if response.status_code == 200:
                     result = response.json()
                     
-                    # استخراج البيانات الحقيقية
                     access_token = result.get('access_token')
                     open_id = result.get('open_id')
                     account_id = result.get('account_id')
@@ -102,9 +102,8 @@ class handler(BaseHTTPRequestHandler):
                             "timestamp": int(time.time())
                         }
                         
-                        # إذا طلب بيانات كاملة
                         if full and access_token:
-                            response_data["access_token"] = access_token
+                            response_data["access_token"] = access_token[:50] + "..."
                             response_data["token_expires"] = int(time.time()) + 3600
                         
                         self.send_response(200)
@@ -112,29 +111,20 @@ class handler(BaseHTTPRequestHandler):
                         self.send_header('Access-Control-Allow-Origin', '*')
                         self.end_headers()
                         self.wfile.write(json.dumps(response_data, indent=2).encode())
-                    else:
-                        self.send_response(404)
-                        self.send_header('Content-type', 'application/json')
-                        self.send_header('Access-Control-Allow-Origin', '*')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({
-                            "success": False,
-                            "error": "Open ID not found for this UID",
-                            "uid": uid,
-                            "version": "1.120.1"
-                        }).encode())
-                else:
-                    self.send_response(404)
-                    self.send_header('Content-type', 'application/json')
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.end_headers()
-                    self.wfile.write(json.dumps({
-                        "success": False,
-                        "error": f"Garena API error: {response.status_code}",
-                        "uid": uid,
-                        "version": "1.120.1"
-                    }).encode())
-                    
+                        return
+                
+                # إذا فشل الطلب
+                self.send_response(404)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "Open ID not found for this UID",
+                    "uid": uid,
+                    "note": "This UID may be protected or invalid"
+                }).encode())
+                
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
@@ -142,8 +132,7 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     "success": False,
-                    "error": str(e),
-                    "version": "1.120.1"
+                    "error": str(e)
                 }).encode())
             return
         
@@ -155,7 +144,7 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps({
             "success": False,
             "error": "Endpoint not found",
-            "available": ["/", "/api/openid"]
+            "available_endpoints": ["/", "/api/openid"]
         }).encode())
     
     def do_OPTIONS(self):
